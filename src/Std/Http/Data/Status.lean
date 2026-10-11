@@ -102,6 +102,12 @@ def ofCodeAndPhrase? (code : UInt16) (phrase : String) : Option CustomStatus :=
   else
     none
 
+/--
+A custom reason phrase contains neither CR nor LF, so it cannot end the status line early.
+-/
+theorem cr_lf_not_mem (s : CustomStatus) : '\r' ∉ s.phrase.toList ∧ '\n' ∉ s.phrase.toList :=
+  Char.cr_lf_not_mem_of_all s.validReasonPhrase (by decide) (by decide)
+
 end CustomStatus
 
 /--
@@ -709,6 +715,15 @@ def reasonPhrase : Status → String
   | .notExtended => "Not Extended"
   | .networkAuthenticationRequired => "Network Authentication Required"
   | .other c => c.phrase
+
+/--
+No reason phrase contains CR or LF, so the status line cannot end early.
+-/
+theorem reasonPhrase_cr_lf_not_mem (s : Status) :
+    '\r' ∉ s.reasonPhrase.toList ∧ '\n' ∉ s.reasonPhrase.toList := by
+  cases s with
+  | other c => exact c.cr_lf_not_mem
+  | _ => decide
 
 instance : ToString Status where
   toString := reasonPhrase

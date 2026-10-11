@@ -323,4 +323,13 @@ but disallows `&` and `=` so they can be treated as structural separators.
 def isQueryDataChar (c : UInt8) : Bool :=
   isQueryChar c && c ≠ '&'.toUInt8 && c ≠ '='.toUInt8
 
+/--
+If every character in `s` satisfies `p`, and `p` rejects CR and LF, then `s` contains neither.
+The validity predicates of the header, chunk-extension and reason-phrase types all have this shape.
+-/
+theorem cr_lf_not_mem_of_all {p : Char → Bool} {s : List Char} (h : s.all p = true)
+    (hr : p '\r' = false) (hn : p '\n' = false) : '\r' ∉ s ∧ '\n' ∉ s := by
+  rw [List.all_eq_true] at h
+  exact ⟨fun m => by simpa [hr] using h _ m, fun m => by simpa [hn] using h _ m⟩
+
 end Std.Http.Internal.Char

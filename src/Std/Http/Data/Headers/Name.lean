@@ -10,6 +10,7 @@ public import Init.Data.ToString
 public import Std.Http.Internal
 import Init.Data.String.Search
 import Init.Data.String.Iter
+import Init.Data.String.Lemmas.Modify
 
 public section
 
@@ -125,6 +126,35 @@ Performs a case-insensitive comparison between a `Name` and a `String`. Returns 
 @[expose]
 def is (name : Name) (s : String) : Bool :=
   name.value == s.toLower
+
+/--
+A header name contains neither CR nor LF, so it cannot end its field line early or inject another
+header.
+-/
+theorem cr_lf_not_mem (n : Name) : '\r' ∉ n.value.toList ∧ '\n' ∉ n.value.toList := by
+  have h := n.isValidHeaderValue
+  simp only [IsValidHeaderName, isToken, decide_eq_true_eq] at h
+  exact Char.cr_lf_not_mem_of_all h.2 (by decide) (by decide)
+
+/--
+`ofString?` rejects a string that still contains CR or LF after trimming. Leading and trailing CR
+and LF are trimmed away rather than rejected.
+-/
+theorem ofString?_eq_none_of_cr_lf {s : String}
+    (h : '\r' ∈ s.trimAscii.toString.toList ∨ '\n' ∈ s.trimAscii.toString.toList) :
+    ofString? s = none := by
+  unfold ofString?
+  dsimp only
+  split
+  · rename_i hv
+    have hv := hv.1
+    simp only [IsValidHeaderName, isToken, decide_eq_true_eq] at hv
+    have := Char.cr_lf_not_mem_of_all hv.2 (by decide) (by decide)
+    simp only [String.toLower, String.toList_map, List.mem_map] at this
+    rcases h with h | h
+    · exact absurd ⟨_, h, rfl⟩ this.1
+    · exact absurd ⟨_, h, rfl⟩ this.2
+  · rfl
 
 instance : ToString Name where
   toString name := name.toCanonical

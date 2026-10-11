@@ -97,6 +97,28 @@ Performs a case-insensitive comparison between a `Value` and a `String`. Returns
 def is (s : Value) (h : String) : Bool :=
   s.value.toLower == h.toLower
 
+/--
+A header value contains neither CR nor LF, so it cannot end its field line early or inject another
+header.
+-/
+theorem cr_lf_not_mem (v : Value) : '\r' ∉ v.value.toList ∧ '\n' ∉ v.value.toList :=
+  Char.cr_lf_not_mem_of_all v.isValidHeaderValue.1 (by decide) (by decide)
+
+/--
+`ofString?` rejects a string that still contains CR or LF after trimming. Leading and trailing CR
+and LF are trimmed away rather than rejected.
+-/
+theorem ofString?_eq_none_of_cr_lf {s : String}
+    (h : '\r' ∈ s.trimAscii.toString.toList ∨ '\n' ∈ s.trimAscii.toString.toList) :
+    ofString? s = none := by
+  unfold ofString?
+  dsimp only
+  split
+  · rename_i hv
+    have := Char.cr_lf_not_mem_of_all hv.1 (by decide) (by decide)
+    simp_all
+  · rfl
+
 instance : ToString Value where
   toString v := v.value
 

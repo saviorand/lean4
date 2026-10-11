@@ -84,6 +84,14 @@ def ofString! (s : String) : ExtensionName :=
   | some res => res
   | none => panic! ("invalid extension name: " ++ s.quote)
 
+/--
+A chunk-extension name contains neither CR nor LF, so it cannot end the chunk-size line early.
+-/
+theorem cr_lf_not_mem (n : ExtensionName) : '\r' ∉ n.value.toList ∧ '\n' ∉ n.value.toList := by
+  have h := n.isValidExtensionName
+  simp only [IsValidExtensionName, isToken, decide_eq_true_eq] at h
+  exact Char.cr_lf_not_mem_of_all h.2 (by decide) (by decide)
+
 end ExtensionName
 
 /--
@@ -150,6 +158,12 @@ def ofString! (s : String) : ExtensionValue :=
   match ofString? s with
   | some res => res
   | none => panic! ("invalid extension value: " ++ s.quote)
+
+/--
+A chunk-extension value contains neither CR nor LF, so it cannot end the chunk-size line early.
+-/
+theorem cr_lf_not_mem (v : ExtensionValue) : '\r' ∉ v.value.toList ∧ '\n' ∉ v.value.toList :=
+  Char.cr_lf_not_mem_of_all v.isValidExtensionValue (by decide) (by decide)
 
 end Chunk.ExtensionValue
 
