@@ -9,6 +9,10 @@ prelude
 public import Std.Http.Data.Headers.Basic
 public import Std.Http.Data.Headers.Name
 public import Std.Http.Data.Headers.Value
+import Init.Data.Array.Bootstrap
+import Init.Data.ByteArray.Lemmas
+import Init.Data.String.Lemmas.Intercalate
+import Init.Data.String.Lemmas.Pattern.Split.Char
 
 public section
 
@@ -259,6 +263,54 @@ instance : Encode .v11 Headers where
   encode buffer headers :=
     headers.fold buffer (fun buf name value =>
       buf.writeString s!"{name}: {value}\r\n")
+
+private theorem toByteArray_foldl_writeString (l : List (Header.Name × Header.Value))
+    (b : ChunkedBuffer) :
+    (l.foldl (fun acc (k, v) => acc.writeString s!"{k}: {v}\r\n") b).toByteArray =
+      b.toByteArray ++ (String.join (l.map fun (n, v) => s!"{n}: {v}\r\n")).toUTF8 := by
+  induction l generalizing b with
+  | nil => simp [ByteArray.append_empty]
+  | cons x xs ih =>
+    rw [List.foldl_cons, ih, ChunkedBuffer.toByteArray_writeString]
+    simp [String.toByteArray_append, ByteArray.append_assoc]
+
+theorem toByteArray_encode (b : ChunkedBuffer) (h : Headers) :
+    (Encode.encode .v11 b h).toByteArray =
+      b.toByteArray ++ (String.join (h.toList.map fun (n, v) => s!"{n}: {v}\r\n")).toUTF8 := by
+  simp only [Encode.encode, fold, toList, IndexMultiMap.toList_eq_toList_toArray,
+    ← Array.foldl_toList]
+  exact toByteArray_foldl_writeString _ b
+
+private theorem join_map_append_singleton (l : List String) (c : Char) :
+    String.join (l.map (· ++ String.singleton c)) =
+      (String.singleton c).intercalate (l ++ [""]) := by
+  apply String.toList_inj.mp
+  simp only [String.toList_join, String.toList_intercalate, List.flatMap_map]
+  induction l with
+  | nil => simp
+  | cons x xs ih => cases xs <;> simp_all [List.intercalate_cons_cons]
+
+/--
+Splitting the encoded header section (the string whose UTF-8 bytes `Encode` writes, see
+`toByteArray_encode`) at LF gives exactly one line per field, `name: value` followed by CR, and
+nothing else: no field can add a line break or end the section early.
+-/
+theorem split_join_toList (h : Headers) :
+    ((String.join (h.toList.map fun (n, v) => s!"{n}: {v}\r\n")).split '\n').toList.map
+        (·.copy) =
+      h.toList.map (fun (n, v) => s!"{n}: {v}\r") ++ [""] := by
+  have crlf : toString "\r\n" = toString "\r" ++ String.singleton '\n' := rfl
+  have hl : h.toList.map (fun (n, v) => s!"{n}: {v}\r\n") =
+      (h.toList.map fun (n, v) => s!"{n}: {v}\r").map (· ++ String.singleton '\n') := by
+    simp only [List.map_map, Function.comp_def, String.append_assoc, crlf]
+  rw [hl, join_map_append_singleton, String.toList_split_intercalate]
+  · simp
+  · intro s hs
+    simp only [List.mem_append, List.mem_map, List.mem_singleton] at hs
+    rcases hs with ⟨⟨n, v⟩, -, rfl⟩ | rfl
+    · simp only [String.toList_append, List.mem_append, not_or]
+      exact ⟨⟨⟨n.lf_not_mem_toCanonical, by decide⟩, v.lf_not_mem⟩, by decide⟩
+    · simp
 
 instance : EmptyCollection Headers :=
   ⟨Headers.empty⟩

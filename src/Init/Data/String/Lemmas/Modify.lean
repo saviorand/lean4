@@ -71,4 +71,11 @@ theorem map_id {s : String} : String.map id s = s := by
   apply String.ext
   simp [List.map_id]
 
+theorem toList_capitalize {s : String} :
+    s.capitalize.toList = match s.toList with
+      | [] => []
+      | c :: cs => c.toUpper :: cs := by
+  simp only [capitalize, Pos.Raw.set, Pos.Raw.get, toList_ofList]
+  split <;> simp_all [Pos.Raw.utf8SetAux, Pos.Raw.utf8GetAux]
+
 end String

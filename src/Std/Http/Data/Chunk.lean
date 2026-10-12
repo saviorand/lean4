@@ -84,12 +84,6 @@ def ofString! (s : String) : ExtensionName :=
   | some res => res
   | none => panic! ("invalid extension name: " ++ s.quote)
 
-theorem cr_not_mem (n : ExtensionName) : '\r' ∉ n.value.toList :=
-  fun h => absurd (List.all_eq_true.mp (of_decide_eq_true n.isValidExtensionName).2 _ h) (by decide)
-
-theorem lf_not_mem (n : ExtensionName) : '\n' ∉ n.value.toList :=
-  fun h => absurd (List.all_eq_true.mp (of_decide_eq_true n.isValidExtensionName).2 _ h) (by decide)
-
 end ExtensionName
 
 /--
@@ -156,12 +150,6 @@ def ofString! (s : String) : ExtensionValue :=
   match ofString? s with
   | some res => res
   | none => panic! ("invalid extension value: " ++ s.quote)
-
-theorem cr_not_mem (v : ExtensionValue) : '\r' ∉ v.value.toList :=
-  fun h => absurd (List.all_eq_true.mp v.isValidExtensionValue _ h) (by decide)
-
-theorem lf_not_mem (v : ExtensionValue) : '\n' ∉ v.value.toList :=
-  fun h => absurd (List.all_eq_true.mp v.isValidExtensionValue _ h) (by decide)
 
 end Chunk.ExtensionValue
 

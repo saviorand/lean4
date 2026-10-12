@@ -10,6 +10,12 @@ public import Init.Data.ToString
 public import Std.Http.Internal
 import Init.Data.String.Search
 import Init.Data.String.Iter
+import Init.Data.String.Lemmas.Modify
+import Init.Data.String.Lemmas.Iter
+import Init.Data.String.Lemmas.Intercalate
+import Init.Data.String.Lemmas.Pattern.Split.Char
+import Init.Data.Iterators.Lemmas.Combinators.FilterMap
+import Init.Data.List.SplitOn.Lemmas
 
 public section
 
@@ -131,6 +137,59 @@ theorem cr_not_mem (n : Name) : '\r' ∉ n.value.toList :=
 
 theorem lf_not_mem (n : Name) : '\n' ∉ n.value.toList :=
   fun h => absurd (List.all_eq_true.mp (of_decide_eq_true n.isValidHeaderValue).2 _ h) (by decide)
+
+private theorem Char.toLower_toUpper (c : Char) : c.toUpper.toLower = c.toLower := by
+  have hb := c.val.toNat_lt
+  simp only [Char.toUpper]
+  split
+  · next h =>
+    have ⟨h₁, h₂⟩ := h
+    simp only [Char.toLower]
+    split <;> split
+    all_goals
+      next h₃ h₄ =>
+      have h₃' := h₃
+      have h₄' := h₄
+      simp only [Char.ext_iff, show 'a'.val = 97 from rfl, show 'z'.val = 122 from rfl,
+        show 'A'.val = 65 from rfl, show 'Z'.val = 90 from rfl, UInt32.le_iff_toNat_le,
+        UInt32.toNat_add, UInt32.toNat_ofNat, UInt32.reduceSub, ge_iff_le,
+        ← UInt32.toNat_inj] at h₁ h₂ h₃' h₄' ⊢
+      omega
+  · rfl
+
+private theorem map_toLower_capitalize (s : String) :
+    s.capitalize.toList.map Char.toLower = s.toList.map Char.toLower := by
+  rw [String.toList_capitalize]
+  split <;> simp_all [Char.toLower_toUpper]
+
+/--
+The canonical form that is written to the wire differs from the stored name only in letter case.
+-/
+theorem toLower_toCanonical (n : Name) : n.toCanonical.toLower = n.value := by
+  conv => rhs; rw [← n.isLowerCase]
+  apply String.toList_inj.mp
+  have hsplit := String.toList_split_char (s := n.value) (c := '-')
+  simp only [toCanonical, String.toLower, String.toList_map, Std.Iter.intercalateString_eq,
+    Std.Iter.toList_map, String.toList_intercalate, List.map_intercalate, List.map_map]
+  have hf : ((fun x => List.map Char.toLower x) ∘ String.toList ∘ toString ∘
+      fun x : String.Slice => x.copy.capitalize) =
+      (fun s : String => s.toList.map Char.toLower) ∘ String.Slice.copy := by
+    funext x
+    simp only [Function.comp_apply, toString]
+    exact map_toLower_capitalize x.copy
+  rw [hf, ← List.map_map, hsplit, List.map_map]
+  conv => rhs; rw [← List.intercalate_splitOn '-' (xs := n.value.toList), List.map_intercalate]
+  simp [Function.comp_def]
+
+theorem cr_not_mem_toCanonical (n : Name) : '\r' ∉ n.toCanonical.toList := by
+  have := n.cr_not_mem
+  rw [← n.toLower_toCanonical, String.toLower, String.toList_map] at this
+  exact fun h => this (List.mem_map.mpr ⟨_, h, rfl⟩)
+
+theorem lf_not_mem_toCanonical (n : Name) : '\n' ∉ n.toCanonical.toList := by
+  have := n.lf_not_mem
+  rw [← n.toLower_toCanonical, String.toLower, String.toList_map] at this
+  exact fun h => this (List.mem_map.mpr ⟨_, h, rfl⟩)
 
 instance : ToString Name where
   toString name := name.toCanonical

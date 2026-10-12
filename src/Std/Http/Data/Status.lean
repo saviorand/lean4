@@ -102,12 +102,6 @@ def ofCodeAndPhrase? (code : UInt16) (phrase : String) : Option CustomStatus :=
   else
     none
 
-theorem cr_not_mem_phrase (s : CustomStatus) : '\r' ∉ s.phrase.toList :=
-  fun h => absurd (List.all_eq_true.mp s.validReasonPhrase _ h) (by decide)
-
-theorem lf_not_mem_phrase (s : CustomStatus) : '\n' ∉ s.phrase.toList :=
-  fun h => absurd (List.all_eq_true.mp s.validReasonPhrase _ h) (by decide)
-
 end CustomStatus
 
 /--

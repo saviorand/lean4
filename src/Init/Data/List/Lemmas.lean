@@ -3849,4 +3849,10 @@ theorem intercalate_cons_of_ne_nil {ys l : List α} {zs : List (List α)} (h : z
   match zs, h with
   | l'::zs, _ => by simp
 
+theorem map_intercalate {f : α → β} {ys : List α} {zs : List (List α)} :
+    (ys.intercalate zs).map f = (ys.map f).intercalate (zs.map (·.map f)) := by
+  induction zs with
+  | nil => simp
+  | cons l zs ih => cases zs <;> simp_all
+
 end List

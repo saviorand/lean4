@@ -8,6 +8,7 @@ module
 prelude
 import Init.Data.ToString
 import Init.Data.Array.Lemmas
+import Init.Data.ByteArray.Lemmas
 public import Init.Data.String.Basic
 public import Init.Data.ByteArray.Basic
 
@@ -126,5 +127,22 @@ instance : Coe ByteArray ChunkedBuffer where
 
 instance : Coe (Array ByteArray) ChunkedBuffer where
   coe := ofArray
+
+theorem toByteArray_eq_foldl (cb : ChunkedBuffer) :
+    cb.toByteArray = cb.data.foldl (· ++ ·) .empty := by
+  rw [toByteArray]
+  split
+  · next h =>
+    obtain ⟨x, hx⟩ := Array.size_eq_one_iff.mp h.symm
+    simp [hx, ByteArray.empty_append]
+  · rfl
+
+theorem toByteArray_push (cb : ChunkedBuffer) (b : ByteArray) :
+    (cb.push b).toByteArray = cb.toByteArray ++ b := by
+  simp [toByteArray_eq_foldl, push]
+
+theorem toByteArray_writeString (cb : ChunkedBuffer) (s : String) :
+    (cb.writeString s).toByteArray = cb.toByteArray ++ s.toUTF8 :=
+  toByteArray_push cb _
 
 end Std.Http.Internal.ChunkedBuffer

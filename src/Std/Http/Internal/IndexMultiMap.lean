@@ -285,4 +285,7 @@ instance [EquivBEq α] [LawfulHashable α] : Union (IndexMultiMap α β) :=
 instance [Monad m] : ForIn m (IndexMultiMap α β) (α × β) where
   forIn map b f := forIn map.entries b f
 
+theorem toList_eq_toList_toArray (map : IndexMultiMap α β) : map.toList = map.toArray.toList := by
+  simp [toList, toArray]
+
 end Std.Internal.IndexMultiMap
